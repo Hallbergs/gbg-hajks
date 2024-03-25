@@ -110,6 +110,7 @@ class Print extends React.PureComponent {
       map: props.map,
       options: props.options,
       dims: this.dims,
+      proxy: props.app.config.proxy,
       mapConfig: props.app.config.mapConfig.map,
     });
   }
@@ -144,6 +145,9 @@ class Print extends React.PureComponent {
           scales={this.props.options.scales}
           visibleAtStart={this.props.options.visibleAtStart}
           dims={this.dims}
+          enableAppStateInHash={
+            this.props.app.config.mapConfig.map.enableAppStateInHash
+          }
         />
       </BaseWindowPlugin>
     );

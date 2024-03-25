@@ -25,6 +25,8 @@ var defaultState = {
   anchorY: 1,
   allowDangerousHtml: true,
   useNewInfoclick: false,
+  useNewPlaceholderMatching: false,
+  useLevel1FeatureHighlight: false,
   transformLinkUri: true,
 };
 
@@ -71,6 +73,13 @@ class ToolOptions extends Component {
           tool.options.allowDangerousHtml || this.state.allowDangerousHtml,
         useNewInfoclick:
           tool.options.useNewInfoclick || this.state.useNewInfoclick,
+        useNewPlaceholderMatching:
+          tool.options.useNewPlaceholderMatching ||
+          this.state.useNewPlaceholderMatching,
+        useLevel1FeatureHighlight:
+          tool.options.useLevel1FeatureHighlight ||
+          this.state.useLevel1FeatureHighlight,
+
         transformLinkUri:
           tool.options.transformLinkUri ?? this.state.transformLinkUri,
         visibleForGroups: tool.options.visibleForGroups
@@ -146,6 +155,8 @@ class ToolOptions extends Component {
         fillColor: this.state.fillColor,
         allowDangerousHtml: this.state.allowDangerousHtml,
         useNewInfoclick: this.state.useNewInfoclick,
+        useNewPlaceholderMatching: this.state.useNewPlaceholderMatching,
+        useLevel1FeatureHighlight: this.state.useLevel1FeatureHighlight,
         transformLinkUri: this.state.transformLinkUri,
         visibleForGroups: this.state.visibleForGroups.map(
           Function.prototype.call,
@@ -388,6 +399,44 @@ class ToolOptions extends Component {
             &nbsp;
             <label htmlFor="useNewInfoclick" style={{ width: "auto" }}>
               Använd ny Infoclick-variant (se GitHub issue #1034)
+            </label>
+          </div>
+          <div>
+            <input
+              id="useNewPlaceholderMatching"
+              name="useNewPlaceholderMatching"
+              type="checkbox"
+              onChange={(e) => {
+                this.handleInputChange(e);
+              }}
+              checked={this.state.useNewPlaceholderMatching}
+            />
+            &nbsp;
+            <label
+              htmlFor="useNewPlaceholderMatching"
+              style={{ width: "auto" }}
+            >
+              Tillåt fler tecken, bl a MarkDown, som del av infoclicks{" "}
+              <i>placeholder</i> (se GitHub issue #1368)
+            </label>
+          </div>
+          <div>
+            <input
+              id="useLevel1FeatureHighlight"
+              name="useLevel1FeatureHighlight"
+              type="checkbox"
+              onChange={(e) => {
+                this.handleInputChange(e);
+              }}
+              checked={this.state.useLevel1FeatureHighlight}
+            />
+            &nbsp;
+            <label
+              htmlFor="useLevel1FeatureHighlight"
+              style={{ width: "auto" }}
+            >
+              Markera features på nivå 1 (grupper) (se GitHub issue #1472) (Kan
+              innebära prestandaproblem vid många features)
             </label>
           </div>
           <div>

@@ -18,9 +18,13 @@ import TileLayer from "ol/layer/Tile";
 import TileWMS from "ol/source/TileWMS";
 import ImageWMS from "ol/source/ImageWMS";
 
+import QRCode from "qrcode";
+
 import { ROBOTO_NORMAL } from "./constants";
+
 export default class PrintModel {
   constructor(settings) {
+    this.proxy = settings.proxy;
     this.map = settings.map;
     this.dims = settings.dims;
     this.logoUrl = settings.options.logo || "";
@@ -84,6 +88,8 @@ export default class PrintModel {
     300000: 20000,
   };
 
+  fakeBase = "https://hajk.js.internal";
+
   previewLayer = null;
   previewFeature = null;
 
@@ -97,6 +103,19 @@ export default class PrintModel {
 
   // A flag that's used in "rendercomplete" to ensure that user has not cancelled the request
   pdfCreationCancelled = null;
+
+  generateQR = async (url, qrSize) => {
+    try {
+      return {
+        data: await QRCode.toDataURL(url),
+        width: qrSize,
+        height: qrSize,
+      };
+    } catch (err) {
+      console.warn(err);
+      return "";
+    }
+  };
 
   calculateScaleBarLengths() {
     if (this.scales.length === this.scaleMeters.length) {
@@ -218,10 +237,10 @@ export default class PrintModel {
       this.includeImageBorder && !options.useMargin
         ? 1
         : options.useTextIconsInMargin && format === "a5"
-        ? this.margin * 8
-        : options.useTextIconsInMargin
-        ? this.margin * 6
-        : this.margin * 2;
+          ? this.margin * 8
+          : options.useTextIconsInMargin
+            ? this.margin * 6
+            : this.margin * 2;
 
     //We set the size of preview window based on the calculated heights and widths.
     const size = {
@@ -351,25 +370,31 @@ export default class PrintModel {
     contentWidth,
     contentHeight,
     pdfWidth,
-    pdfHeight
+    pdfHeight,
+    contentType
   ) => {
     // We must take the potential margin around the map-image into account (this.margin)
-
+    // And the extra margin for textIconsMargin.
+    // And the extra extra margin for qrcode image
     const margin = this.textIconsMargin + this.margin;
+    // Here we simply say if content that is going to be placed is a qr code...
+    // we need to adjust it slightly because the qr code is bigger than the other icons.
+    const qrMargin =
+      (contentType === "qrCode" && this.textIconsMargin) === 0 ? 3 : 0;
 
     let pdfPlacement = { x: 0, y: 0 };
     if (placement === "topLeft") {
       pdfPlacement.x = margin;
-      pdfPlacement.y = margin;
+      pdfPlacement.y = margin - qrMargin;
     } else if (placement === "topRight") {
       pdfPlacement.x = pdfWidth - contentWidth - margin;
-      pdfPlacement.y = margin;
+      pdfPlacement.y = margin - qrMargin;
     } else if (placement === "bottomRight") {
       pdfPlacement.x = pdfWidth - contentWidth - margin;
-      pdfPlacement.y = pdfHeight - contentHeight - margin;
+      pdfPlacement.y = pdfHeight - contentHeight - margin + qrMargin;
     } else {
       pdfPlacement.x = margin;
-      pdfPlacement.y = pdfHeight - contentHeight - margin;
+      pdfPlacement.y = pdfHeight - contentHeight - margin + qrMargin;
     }
     return pdfPlacement;
   };
@@ -774,7 +799,7 @@ export default class PrintModel {
       const imageSource = new ImageWMS({
         ...source.getProperties(),
         projection: source.getProjection(),
-        crossOrigin: source.crossOrigin ?? "anonymous",
+        crossOrigin: source.crossOrigin || source.crossOrigin_ || "anonymous", // `crossOrigin` is not always publicly available for some reason... Had to use the private property as fallback
         params: { ...source.getParams() },
         ratio: 1,
         hidpi: false,
@@ -931,6 +956,21 @@ export default class PrintModel {
     }
   };
 
+  // Returns an URL object from the src string, prepended with proxy if any.
+  // Uses a fake base for resolving relative URL:s so we can detect this when
+  // resolving the final URL to string (and remove it).
+  // This let's us work with NodeJS URL API with relative URL:s.
+  getURL = (src) => {
+    const location = (this.proxy || "") + src;
+    return new URL(location, this.fakeBase);
+  };
+
+  // Returns a string with the complete URL, removing fake base if any.
+  toURLString = (url) => {
+    const urlString = url.toString();
+    return urlString.replace(this.fakeBase, "");
+  };
+
   // Returns an array of objects containing information regarding the tiles
   // that should be created to comply with the supplied 'MAX_TILE_SIZE' and
   // also 'fill' the image.
@@ -981,7 +1021,7 @@ export default class PrintModel {
       // into consideration).
       source.setImageLoadFunction((image, src) => {
         // Let's create an URL-object so that we can easily grab and alter search-parameters.
-        const url = new URL(src);
+        const url = this.getURL(src);
         const searchParams = url.searchParams;
         // We have to make sure to update the search-parameters to include dpi-settings.
         searchParams.set("DPI", options.resolution);
@@ -1010,13 +1050,16 @@ export default class PrintModel {
           // Then, for each tile-information-object, we'll create a request-url containing the
           // information that we've gathered (such as the size and bounding-box).
           for (const tile of tiles) {
-            const tileUrl = new URL(url.toString());
+            const tileUrl = this.getURL(url.toString());
             tileUrl.searchParams.set("BBOX", tile.bBox);
             tileUrl.searchParams.set("HEIGHT", tile.tileHeight);
             tileUrl.searchParams.set("WIDTH", tile.tileWidth);
             // Then we'll fetch the images from the WMS-server
             promises.push(
-              this.loadImageTile(canvas, { ...tile, url: tileUrl.toString() })
+              this.loadImageTile(canvas, {
+                ...tile,
+                url: this.toURLString(tileUrl),
+              })
             );
           }
           // When all image-promises has settled, we can set the image to the canvas on which we've
@@ -1026,7 +1069,7 @@ export default class PrintModel {
           });
         } else {
           // If the request is not too complex, we can fetch it right away.
-          image.getImage().src = url.toString();
+          image.getImage().src = this.toURLString(url);
         }
       });
     } catch (error) {
@@ -1095,6 +1138,7 @@ export default class PrintModel {
   };
 
   print = (options) => {
+    const url = window.location.href;
     const format = options.format;
     const orientation = options.orientation;
     const resolution = options.resolution;
@@ -1248,6 +1292,35 @@ export default class PrintModel {
           }
         }
       }
+
+      if (options.includeQrCode && this.mapConfig.enableAppStateInHash) {
+        try {
+          const qrCode = await this.generateQR(url, 20);
+
+          let qrCodePlacement = this.getPlacement(
+            options.qrCodePlacement,
+            qrCode.width,
+            qrCode.height,
+            dim[0],
+            dim[1],
+            "qrCode"
+          );
+
+          pdf.addImage(
+            qrCode.data,
+            "PNG",
+            qrCodePlacement.x,
+            qrCodePlacement.y,
+            qrCode.width,
+            qrCode.height
+          );
+        } catch (error) {
+          const imgLoadingError = { error: error, type: "QR-koden" };
+          // The image loading may fail due to e.g. wrong URL, so let's catch the rejected Promise
+          this.localObserver.publish("error-loading-image", imgLoadingError);
+        }
+      }
+
       // If logo URL is provided, add the logo to the map
       if (options.includeLogo && this.logoUrl.trim().length >= 5) {
         try {
@@ -1274,8 +1347,9 @@ export default class PrintModel {
             logoHeight
           );
         } catch (error) {
+          const imgLoadingError = { error: error, type: "Logotypbilden" };
           // The image loading may fail due to e.g. wrong URL, so let's catch the rejected Promise
-          this.localObserver.publish("error-loading-logo-image");
+          this.localObserver.publish("error-loading-image", imgLoadingError);
         }
       }
 
@@ -1307,8 +1381,9 @@ export default class PrintModel {
             arrowHeight
           );
         } catch (error) {
+          const imgLoadingError = { error: error, type: "Norrpilen" };
           // The image loading may fail due to e.g. wrong URL, so let's catch the rejected Promise
-          this.localObserver.publish("error-loading-arrow-image");
+          this.localObserver.publish("error-loading-image", imgLoadingError);
         }
       }
 

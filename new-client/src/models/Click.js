@@ -4,7 +4,7 @@ import WMSGetFeatureInfo from "ol/format/WMSGetFeatureInfo";
 import TileLayer from "ol/layer/Tile";
 import ImageLayer from "ol/layer/Image";
 
-import { hfetch } from "utils/FetchWrapper";
+import { hfetch } from "../utils/FetchWrapper";
 
 function query(map, layer, evt) {
   const coordinate = evt.coordinate;
@@ -18,7 +18,7 @@ function query(map, layer, evt) {
   // is not enough, we must also respect the min/max zoom level settings, #836.
   if (
     layer.layersInfo &&
-    layer.getMinZoom() <= currentZoom &&
+    currentZoom > layer.getMinZoom() &&
     currentZoom <= layer.getMaxZoom()
   ) {
     const subLayers = Object.values(layer.layersInfo);
