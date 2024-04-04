@@ -11,14 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - This release marks the removal of the legacy V1 API (`/api/v1`) in both the NodeJS backend and the old .NET 4.5 backend (refer to the _Removed_ section below). Client UI is now V2-compatible only, as it requires the consolidated loading method. This means that you may need to update your configuration. Refer to `docs/migrate-to-v2-api.md` for details.
 - This release marks deprecation of some plugins that either became replaced by a new solution or transformed into a community plugin. Refer to `docs/deprecated-plugins.md` for details.
+- Although not exactly a _breaking_ change, but it fits well here: **the repo has been restructured**. All apps can now be found in the `apps/` directory. The `new-` prefix has been removed from apps' names. Some shell scripts now live in `scripts/` while the majority of Docker-related files, except for the official Dockerfile, have been moved into the `Docker/` directory. PR: [#1488](https://github.com/hajkmap/Hajk/pull/1488)
 
 ### Added
 
+- Sketch: It is now possible to buffer from the Sketch plugin [#1310](https://github.com/hajkmap/Hajk/issues/1310)
+- Sketch: The user now has the option to reset to default styling and choose from a wider range of colors in the color picker; additionally, black and white options have been added [#1372](https://github.com/hajkmap/Hajk/issues/1372)
+- Core, Admin: Added support for stand-alone GeoWebCache WMS Server. Issue: [#1469](https://github.com/hajkmap/Hajk/issues/1469). PR: [#1493](https://github.com/hajkmap/Hajk/pull/1493)
 - Print/Anchor: It's now possible to generate qr codes in Share and Print [#1482](https://github.com/hajkmap/Hajk/issues/1482)
 - Sketch: It's now possible to disable stroke for polygons and circles [#1177](https://github.com/hajkmap/Hajk/issues/1177)
 - Backend: The new .NET 6 backend. Issue: [#1210](https://github.com/hajkmap/Hajk/issues/1210). PR: [#1395](https://github.com/hajkmap/Hajk/pull/1395)
 - Core: Allow to specify map config by using `m` query parameter, even when no backend is active. [commit](https://github.com/hajkmap/Hajk/commit/eb5be276437994c86c2edd5abef3ea21cd6071b4)
 - Deployment: Added Dockerfile making it possible to deploy "Hajk-simple" on OpenShift using S2I. PR: [#1487](https://github.com/hajkmap/Hajk/pull/1487)
+- TimeSlider: It's now possible to print images of the content generated in the TimeSlider plugin. PR: [#1492](https://github.com/hajkmap/Hajk/pull/1492)
 
 ### Fixed
 
@@ -29,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - Bumped dependencies in Client.
+- The official Dockerfile build on an image based on current Node LTS (v20).
 
 ### Removed
 
